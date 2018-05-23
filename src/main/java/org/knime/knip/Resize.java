@@ -51,18 +51,29 @@ public class Resize {
 		final Img newResizerResult = scifio.datasetIO().open(
 			"res/resizedNew.ome.tif").getImgPlus().getImg();
 
-		checkImages(resized, newResizerResult);
+		boolean newFailed = checkImages(resized, newResizerResult);
 
 		final Img oldResizerResult = scifio.datasetIO().open(
 			"res/resizedOld.ome.tif").getImgPlus().getImg();
 
-		checkImages(resized, oldResizerResult);
+		boolean oldFailed = checkImages(resized, oldResizerResult);
+
+		if (newFailed) {
+			System.out.println("new failed");
+		}
+		if (oldFailed) {
+			System.out.println("old failed");
+		}
 
 	}
 
-	private static void checkImages(final Img resized, final Img resizerResult) {
+	private static boolean checkImages(final Img resized,
+		final Img resizerResult)
+	{
 		final Cursor<RealType> resizedCursor = resized.localizingCursor();
 		final RandomAccess<RealType> resizerRa = resizerResult.randomAccess();
+
+		boolean failed = false;
 
 		final int[] pos = new int[4];
 		while (resizedCursor.hasNext()) {
@@ -71,10 +82,12 @@ public class Resize {
 			resizerRa.setPosition(pos);
 			final RealType newPixel = resizerRa.get();
 			if (newPixel.getRealDouble() != resPixel.getRealDouble()) {
-				System.out.println("Pixel values not identical at position " + Arrays
-					.toString(pos));
+				failed = true;
+//				System.out.println("Pixel values not identical at position " + Arrays
+//					.toString(pos));
 			}
 		}
+		return failed;
 	}
 
 }
