@@ -3,16 +3,21 @@ package org.knime.knip;
 
 import io.scif.SCIFIO;
 
+import java.util.Arrays;
+
 import net.imagej.Dataset;
 import net.imagej.ImageJ;
 import net.imagej.ops.Ops;
+import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.ImgView;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.Scale;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
 
 public class Resize {
@@ -45,31 +50,31 @@ public class Resize {
 
 		final Img newResizerResult = scifio.datasetIO().open(
 			"res/resizedNew.ome.tif").getImgPlus().getImg();
-		final Img diffImgNew = (Img) ij.op().run(Ops.Math.Subtract.class, resized,
-			newResizerResult);
-		final double sumnew = ij.op().stats().sum(diffImgNew).getRealDouble();
 
-		if (sumnew == 0.0) {
-			System.out.println("REGRESSION: no difference to new resizer result");
-		}
-		else {
-			System.out.println("difference to new resizer result: " + sumnew);
-		}
+		checkImages(resized, newResizerResult);
 
 		final Img oldResizerResult = scifio.datasetIO().open(
 			"res/resizedOld.ome.tif").getImgPlus().getImg();
-		final Img diffImgOld = (Img) ij.op().run(Ops.Math.Subtract.class, resized,
-			oldResizerResult);
-		final double sumOld = ij.op().stats().sum(diffImgOld).getRealDouble();
 
-		if (sumOld == 0.0) {
-			System.out.println("no difference to old resizer result");
-		}
-		else {
-			System.out.println("REGRESSION: difference to old resizer result: " +
-				sumOld);
-		}
+		checkImages(resized, oldResizerResult);
 
+	}
+
+	private static void checkImages(final Img resized, final Img resizerResult) {
+		final Cursor<RealType> resizedCursor = resized.localizingCursor();
+		final RandomAccess<RealType> resizerRa = resizerResult.randomAccess();
+
+		final int[] pos = new int[4];
+		while (resizedCursor.hasNext()) {
+			final RealType resPixel = resizedCursor.next();
+			resizedCursor.localize(pos);
+			resizerRa.setPosition(pos);
+			final RealType newPixel = resizerRa.get();
+			if (newPixel.getRealDouble() != resPixel.getRealDouble()) {
+				System.out.println("Pixel values not identical at position " + Arrays
+					.toString(pos));
+			}
+		}
 	}
 
 }
